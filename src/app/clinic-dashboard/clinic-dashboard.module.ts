@@ -4,8 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Angulartics2Module } from 'angulartics2';
 
 import { CalendarModule } from 'angular-calendar';
-
-
+import {
+  DailyScheduleResourceService
+} from
+  '../etl-api/daily-scheduled-resource.service';
+import { DailyScheduleService } from './daily-schedule/daily-appointments.service';
 import { clinicDashboardRouting } from './clinic-dashboard-routing';
 import { DailyScheduleComponent } from './daily-schedule/daily-schedule.component';
 import { ClinicDashboardGuard } from './clinic-dashboard.guard';
@@ -42,7 +45,9 @@ import { BusyModule } from 'angular2-busy';
   ],
   providers: [
     ClinicDashboardGuard,
-    ClinicDashboardCacheService
+    DailyScheduleResourceService,
+    ClinicDashboardCacheService,
+    DailyScheduleService
   ],
   exports: [
     DailyScheduleComponent,
