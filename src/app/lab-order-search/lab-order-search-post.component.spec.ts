@@ -139,7 +139,6 @@ describe('LabOrderSearchPostComponent', () => {
       expect(comp.resetOrder).toHaveBeenCalled();
     });
   }));
-
   it('should submit order when submit button is clicked', async(() => {
     let comp = fixture.componentInstance;
     comp.orderType = {
