@@ -224,8 +224,9 @@ export class VisitPeriodComponent implements OnInit, OnDestroy {
     this.stopDatetime = visit.stopDatetime;
     this.startDatetime = visit.startDatetime;
     this.currentVisit = visit ? visit : '';
-    this.locationUuid = visit ? visit.location.uuid : null;
-    this.locationName = visit ? visit.location.display : null;
+    let location = visit ? visit.location : null;
+    this.locationUuid = location ? location.uuid : null;
+    this.locationName = location ? location.display : null;
     this.encounterVisitUuid = visit ? visit.uuid : null;
     this.currentVisitType = visit && visit.visitType ? visit.visitType.name : null;
     this.loadingVisit = false;
