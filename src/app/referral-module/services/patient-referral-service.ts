@@ -14,6 +14,7 @@ import {
 import {
     ProviderResourceService
 } from '../../openmrs-api/provider-resource.service';
+import { PatientReferralResourceService } from '../../etl-api/patient-referral-resource.service';
 
 @Injectable()
 export class PatientReferralService {
@@ -21,6 +22,7 @@ export class PatientReferralService {
               private programReferralResourceService: ProgramReferralResourceService,
               private encounterResourceService: EncounterResourceService,
               private providerResourceService: ProviderResourceService,
+              private patientReferralResourceService: PatientReferralResourceService,
               private referralResourceService: ReferralProviderResourceService) {
 
   }
@@ -86,6 +88,32 @@ public getReferalProviders(startDate, endDate, locations, programs, workFlowStat
         reject('User is required');
       }
     });
+  }
+
+  public getProviderReferralPatientList(params: any) {
+    let referralInfo: BehaviorSubject<any> = new BehaviorSubject<any>([]);
+    let referralObservable = this.patientReferralResourceService.getPatientReferralPatientList({
+      endDate: params.endDate,
+      locationUuids: params.locationUuids,
+      startDate: params.startDate,
+      startAge: params.startAge,
+      endAge: params.endAge,
+      gender: params.gender,
+      programUuids: params.programUuids,
+      stateUuids: params.stateUuid,
+      providerUuids: params.provider,
+      startIndex: params.startIndex,
+    });
+
+    if (referralObservable === null) {
+      throw new Error('Null referral provider observable');
+    } else {
+      referralObservable.subscribe(
+          (referrals) => {
+              referralInfo.next(referrals);
+           });
+  }
+    return referralInfo.asObservable();
   }
 
   private toOpenmrsDateFormat(dateToConvert: any): string {
