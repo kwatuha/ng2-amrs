@@ -14,6 +14,7 @@ import { UserDefaultPropertiesService
 } from '../../../user-default-properties/user-default-properties.service';
 import { ProgramsTransferCareService
 } from '../../../patient-dashboard/programs/transfer-care/transfer-care.service';
+import {Subject} from "rxjs/Subject";
 
 @Component({
   selector: 'program-enrollment-manager',
@@ -21,6 +22,7 @@ import { ProgramsTransferCareService
   styleUrls: ['./enrollment-manager.component.css']
 })
 export class EnrollmentManagerComponent implements OnInit, OnDestroy {
+  public onReloadPrograms: Subject<boolean> = new Subject();
   public showFormWizard: boolean = false;
   public patient: Patient;
   public stateChangeForms: any[];
@@ -34,6 +36,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
   public inputError: string;
   public newProgram: string;
   public availablePrograms: any[];
+  public availableProgramsOptions: any[];
   private location: any;
   private stateChangeRequiresModal: boolean = false;
   private program: any;
@@ -48,16 +51,20 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
               private enrollementWorkflowService: EnrollementWorkflowService,
               private userService: UserService,
               private userDefaultPropertiesService: UserDefaultPropertiesService) {
+
   }
 
   public ngOnInit() {
+    this.showFormWizard = false;
       this.patientReferralService.getProcessPayload().subscribe((stateChange) => {
-        if (stateChange && stateChange.stateChangeRequiresModal) {
-          this.stateChangeRequiresModal = true;
+        if (stateChange) {
           this.state = stateChange;
           this.program = stateChange.program;
           this.showFormWizard = stateChange.showFormWizard;
           this.stateChangeForms = stateChange.forms;
+          if (stateChange.stateChangeRequiresModal) {
+            this.stateChangeRequiresModal = true;
+          }
         }
       });
       this.patientService.currentlyLoadedPatient.subscribe((patient) => {
@@ -85,7 +92,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
   }
 
   public onProgramChange(event) {
-    this.newProgram = event;
+    this.newProgram = event.value;
   }
 
   public formsCompleted(event) {
@@ -103,9 +110,18 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
         this.patient, this.program.enrolledProgram.location.uuid, targetState,
         this.program.enrolledProgram.uuid,
         this.location, this.program.dateEnrolled).subscribe((response: any) => {
-        this.modalProcessOnSuccess = false;
-        this._completeModalProcess();
+        if (_.isArray(response)) {
+          this.newEnrollment = _.find(response,
+            (program) => _.isNull(program.dateCompleted));
+        } else {
+          this.newEnrollment = response;
+        }
+        this._processComplete();
+        if (this.modalProcessOnSuccess) {
+          this.modalProcessOnSuccess = false;
+        }
         this.patientService.fetchPatientByUuid(this.patient.uuid);
+        this.onReloadPrograms.next(true);
       });
     }
   }
@@ -127,14 +143,15 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
     this.showModal = false;
     this.state = undefined;
     this.program = undefined;
-    this.patientService.fetchPatientByUuid(this.patient.uuid);
+    this.onReloadPrograms.next(true);
   }
 
   public cancelProcess() {
     this.showModal = false;
     this.state = undefined;
     this.program = undefined;
-    this._completeModalProcess();
+    this.showFormWizard = false;
+    this.modalProcessOnSuccess = false;
   }
 
   public referPatient() {
@@ -161,9 +178,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
               });
               this.patientReferralService.saveReferralEncounter(programInfo)
                 .subscribe((savedEncounter) => {
-                  this.showModal = false;
-                  this.modalProcessOnSuccess = false;
-                  this._completeModalProcess();
+                  this._processComplete();
                 }, (error) => {
                 });
             } else {
@@ -194,11 +209,14 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
       this.program.enrolledProgram.location.uuid, targetState, this.program.enrolledProgram.uuid,
       this.location, this.program.dateEnrolled, this.program.programUuid)
       .subscribe((response: any) => {
-      console.log(response);
-      this.showModal = false;
-      this.modalProcessOnSuccess = false;
-      this._completeModalProcess();
-      this.patientService.fetchPatientByUuid(this.patient.uuid);
+        if (_.isArray(response)) {
+          this.newEnrollment = _.find(response,
+            (program) => _.isNull(program.dateCompleted));
+        } else {
+          this.newEnrollment = response;
+        }
+      this._processComplete();
+      this.onReloadPrograms.next(true);
 
     });
   }
@@ -261,6 +279,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
       case '4e6d4fd4-d923-439e-9b6e-6baaffd20bfa':
         msg = 'You are about to ' + this.state.concept.display.toLowerCase() +
           ' a patient from ' + this.program.enrolledProgram.display + '. Proceed?';
+        this.stateChangeRequiresModal  = false;
         this._confirmWithMessage(msg);
         break;
       // refer
@@ -279,6 +298,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
       case 'e517d6e2-6236-42db-9f71-0b6270c6cfa9':
         msg = 'You are about to put the patient to a state of In Care for ' +
           this.program.enrolledProgram.display + '. Proceed?';
+        this.stateChangeRequiresModal  = false;
         this._confirmWithMessage(msg);
         break;
       // switch
@@ -286,12 +306,26 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
         msg = 'Switch patient from ' + this.program.enrolledProgram.display +
           ' to another program. Proceed?';
         this.stateChangeRequiresModal = true;
+        this.availableProgramsOptions = _.map(this.patient.enrolledPrograms,
+          (availableProgram) => {
+          if (!availableProgram.isEnrolled) {
+            return {
+              label: availableProgram.program.display,
+              value: availableProgram.program.uuid
+            }
+          }
+          });
+        // sort alphabetically;
+        this.availableProgramsOptions = _.compact(_.orderBy(this.availableProgramsOptions,
+          ['label'],['asc']));
+        this.newProgram = (_.first(this.availableProgramsOptions)).value;
         this._confirmWithMessage(msg);
         break;
       // refer in
       case '78526af3-ef12-4f53-94de-51c455ef0a88':
         msg = 'You are about to receive the patient(referred) to this facility for ' +
           this.program.enrolledProgram.display + '. Proceed?';
+        this.stateChangeRequiresModal  = false;
         this._confirmWithMessage(msg);
         break;
       // refer back
@@ -310,6 +344,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
       // transfer in
       case 'e293229b-4e74-445c-bfd2-602bbe4a91fb':
         msg = 'Transfer patient in to this facility?';
+        this.stateChangeRequiresModal  = false;
         this._confirmWithMessage(msg);
         break;
       // pending transfer
@@ -318,6 +353,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
           'in this facility under ' + this.program.enrolledProgram.display +
           ' until transferred in in ' +
           'the new location';
+        this.stateChangeRequiresModal  = false;
         this._confirmWithMessage(msg);
         break;
     }
@@ -333,6 +369,7 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
       acceptVisible: true,
       accept: () => {
         this._provideActionStep();
+        console.log('availableProgramsOptions', this.availableProgramsOptions);
       },
       reject: () => {
         this._cancelAction();
@@ -346,11 +383,12 @@ export class EnrollmentManagerComponent implements OnInit, OnDestroy {
     this.program = undefined;
   }
 
-  private _completeModalProcess() {
+  private _processComplete() {
     this.showFormWizard = false;
     this.isBusy = false;
     this.hasError = false;
     this.modalProcessOnSuccess = true;
+    this.patientReferralService.saveProcessPayload(null);
   }
 
   private _patientEnrolledInSameLocation() {
