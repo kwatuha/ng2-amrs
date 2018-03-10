@@ -27,6 +27,7 @@ export class ProviderReferralComponent extends PatientReferralBaseComponent
   public sectionsDef = [];
   public programName: any;
   public enabledControls = 'locationControl,datesControl,programWorkFlowControl';
+  private urlSource: any = '';
   constructor(public patientReferralResourceService: PatientReferralResourceService,
               private route: ActivatedRoute, private location: Location,
               private router: Router,
@@ -101,6 +102,8 @@ export class ProviderReferralComponent extends PatientReferralBaseComponent
       this.locationUuids = [path.queryParams['locationUuids']];
     }
     delete path.queryParams['gender'];
+    this.urlSource = path.queryParams['urlSource'];
+    this.dataAnalyticsDashboardService.setUrlSource(path.queryParams['urlSource']);
     if (pathHasHistoricalValues) {
       this.generateReport();
     }
@@ -117,7 +120,8 @@ export class ProviderReferralComponent extends PatientReferralBaseComponent
       'programUuids': (this.programs as any),
       'stateUuids': (this.states as any),
       'providerUuids': (this.provider as any),
-      'locationUuids': (this.locationUuids as any)
+      'locationUuids': (this.locationUuids as any),
+       'urlSource': this.urlSource
     };
 
     if (!this.states) {
@@ -139,9 +143,15 @@ export class ProviderReferralComponent extends PatientReferralBaseComponent
       delete path.queryParams['gender'];
     }
 
+    if (this.urlSource === 'REFER') {
+      let currentUserDefaultLocation = this.getUserLocation();
+      this.locationUuids = [currentUserDefaultLocation];
+    }
+
     if (!this.locationUuids) {
       delete path.queryParams['locationUuids'];
     }
+    path.queryParams['urlSource'] = this.urlSource;
     this.location.replaceState(path.toString());
   }
   public getLocationsSelected() {
@@ -197,4 +207,9 @@ export class ProviderReferralComponent extends PatientReferralBaseComponent
     }).join(' ');
   }
 
+  private getUserLocation() {
+    let location = this.defaultPropertiesService.getCurrentUserDefaultLocationObject()
+            || {};
+    return location ? location.uuid : null;
+  }
 }

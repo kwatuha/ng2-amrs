@@ -276,3 +276,17 @@ label.buttons {
 .enroll-button {
 margin-top:-2px;
 }
+.refer-status {
+display: block;
+background-color:#ACD5B6;
+color: rgb(2, 2, 26);
+font-size: 2rem;
+
+}
+
+.referral-message-container {
+  padding: 20px 15px;
+  background-color: white;
+  border-left: 1px solid #dcdcdc;
+  border-right: 1px solid #dcdcdc
+}

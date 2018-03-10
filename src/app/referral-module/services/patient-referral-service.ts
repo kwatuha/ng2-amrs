@@ -110,7 +110,7 @@ export class PatientReferralService {
       endAge: params.endAge,
       gender: params.gender,
       programUuids: params.programUuids,
-      stateUuids: params.stateUuid,
+      stateUuids: params.stateUuids,
       providerUuids: params.providerUuids,
       startIndex: params.startIndex,
     });
@@ -124,6 +124,22 @@ export class PatientReferralService {
            });
   }
     return referralInfo.asObservable();
+  }
+
+  public getProgramEnrollmentReferralLocation(enrollmentUuid: any) {
+    let referral: BehaviorSubject<any> = new BehaviorSubject<any>([]);
+    let referralObservable = this.patientReferralResourceService.getReferralLocationByEnrollmentUuid
+    (enrollmentUuid);
+
+    if (referralObservable === null) {
+      throw new Error('Null referral location observable');
+    } else {
+      referralObservable.subscribe(
+          (referrals) => {
+              referral.next(referrals);
+           });
+  }
+    return referral.asObservable();
   }
 
   private toOpenmrsDateFormat(dateToConvert: any): string {

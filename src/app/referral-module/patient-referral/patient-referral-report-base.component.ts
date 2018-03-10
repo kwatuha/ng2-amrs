@@ -8,6 +8,7 @@ import {
 import {
   PatientReferralResourceService
 } from '../../etl-api/patient-referral-resource.service';
+import { PatientReferralService } from '../services/patient-referral-service';
 
 @Component({
   selector: 'patient-referral-report-base',
@@ -104,17 +105,29 @@ export class PatientReferralBaseComponent implements OnInit {
     this.encounteredError = false;
     this.errorMessage = '';
     this.isLoadingReport = true;
+    let filterLocation = this.getSelectedLocations(this.locationUuids);
+    let filterProvider = this.provider ;
+    let loadSourceType = this.dataAnalyticsDashboardService.getUrlSource();
+    // disable provider filter when searching for refer patients for current location
+    if (loadSourceType === 'REFER') {
+          filterProvider = 'undefined';
+    }
+
+    // disable Location filter when searching for refer back patients for current location
+    if (loadSourceType === 'REFERBACK') {
+          filterLocation = 'undefined';
+     }
     this.patientReferralResourceService
       .getPatientReferralReport({
         endDate: this.toDateString(this.endDate),
         gender: this.gender ? this.gender : 'F,M',
         startDate: this.toDateString(this.startDate),
         programUuids: this.programs,
-        locationUuids: this.getSelectedLocations(this.locationUuids),
+        locationUuids: filterLocation,
         stateUuids: this.states,
         startAge: this.startAge,
         endAge: this.endAge,
-        providerUuids: this.provider
+        providerUuids: filterProvider
       }).subscribe(
       (data) => {
         this.isLoadingReport = false;

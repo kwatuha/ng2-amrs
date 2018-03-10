@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Http, Response, URLSearchParams } from '@angular/http';
 import { AppSettingsService } from '../app-settings';
 import { DataCacheService } from '../shared/services/data-cache.service';
+import { Observable, Subject } from 'rxjs/Rx';
 
 @Injectable()
 export class PatientReferralResourceService {
@@ -16,6 +17,10 @@ export class PatientReferralResourceService {
   public getPatientListUrl(): string {
     return this.appSettingsService.getEtlRestbaseurl().trim()
       + `referral-patient-list`;
+  }
+  public getReferralLocationUrl(): string {
+    return this.appSettingsService.getEtlRestbaseurl().trim()
+      + `patient-referral-details`;
   }
 
   public getUrlRequestParams(params): URLSearchParams {
@@ -72,12 +77,21 @@ export class PatientReferralResourceService {
     }
     urlParams.set('limit', params.limit);
     let url = this.getPatientListUrl();
-    return this.http.get(url, {
+    let request = this.http.get(url, {
       search: urlParams
     })
       .map((response: Response) => {
         return response.json().result;
       });
 
+    this.cacheService.cacheRequest(url, urlParams, request);
+    return request;
+  }
+
+  public getReferralLocationByEnrollmentUuid(uuid: string) {
+    let url = this.getReferralLocationUrl()  + '/' + uuid;
+    return this.http.get(url).map((response: Response) => {
+        return response.json();
+    });
   }
 }

@@ -7,6 +7,8 @@ import { Subscription } from 'rxjs/Rx';
 import {
   PatientReferralResourceService
 } from '../../etl-api/patient-referral-resource.service';
+import { DataAnalyticsDashboardService
+} from '../../data-analytics-dashboard/services/data-analytics-dashboard.services';
 
 @Component({
   selector: 'patient-referral-tabular',
@@ -102,6 +104,7 @@ export class PatientReferralTabularComponent implements OnInit {
 
   constructor(private router: Router,
               private route: ActivatedRoute,
+              private dataAnalyticsDashboardService: DataAnalyticsDashboardService,
               public resourceService: PatientReferralResourceService) {
   }
 
@@ -156,17 +159,30 @@ export class PatientReferralTabularComponent implements OnInit {
 
   public generatePatientListReport(data) {
     this.isLoading = true;
+    let loadSourceType = this.dataAnalyticsDashboardService.getUrlSource();
+    let filterLocation =  data.data.locationUuids ? data.data.locationUuids : null;
+    let filterProvider =  this.provider ? this.provider : null;
+
+        // disable provider filter when searching for refer patients for current location
+    if (loadSourceType === 'REFER') {
+          filterProvider = 'undefined';
+    }
+
+    // disable Location filter when searching for refer back patients for current location
+    if (loadSourceType === 'REFERBACK') {
+          filterLocation = 'undefined';
+     }
 
     this.resourceService.getPatientReferralPatientList({
       endDate: this.toDateString(this._dates.endDate),
-      locationUuids: data.data.locationUuids ? data.data.locationUuids : null,
+      locationUuids: filterLocation,
       startDate: this.toDateString(this._dates.startDate),
       startAge: this.startAge ? this.startAge : null,
       endAge: this.endAge ? this.endAge : null,
       gender: this.gender ? this.gender : null,
       programUuids: data.data.programUuids ? data.data.programUuids : null,
       stateUuids: this.stateUuid ? this.stateUuid : null,
-      providerUuids: this.provider ? this.provider : null,
+      providerUuids: filterProvider,
       startIndex: this.startIndex ? this.startIndex : null,
     }).subscribe((report) => {
       this.patientData = report;

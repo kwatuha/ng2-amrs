@@ -9,6 +9,7 @@ import { ProgramService } from '../programs/program.service';
 import { PatientService } from '../services/patient.service';
 import { Patient } from '../../models/patient.model';
 import { PatientProgramResourceService } from '../../etl-api/patient-program-resource.service';
+import { PatientReferralResourceService } from '../../etl-api/patient-referral-resource.service';
 
 @Component({
   selector: 'landing-page',
@@ -54,9 +55,11 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
 //  public programList: any[] = require('../programs/programs.json');
   private _datePipe: DatePipe;
   private subscription: Subscription;
-
+  private locationSubscription: Subscription;
+  private locationReferredFrom: any = '';
   constructor(private patientService: PatientService,
               private programService: ProgramService,
+              private patientReferralService: PatientReferralResourceService,
               private patientProgramResourceService: PatientProgramResourceService) {
     this._datePipe = new DatePipe('en-US');
   }
@@ -70,6 +73,9 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
   public ngOnDestroy(): void {
     if (this.subscription) {
       this.subscription.unsubscribe();
+    }
+    if (this.locationSubscription) {
+      this.locationSubscription.unsubscribe();
     }
   }
 
@@ -202,6 +208,21 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
     this.workflowStates = this.selectedWorkflow.states;
   }
 
+  public isReferred(enrolledProgram: any ): boolean {
+    let refer = '98d8131e-973d-4082-9115-2a848daee5a2';
+    let  referred = false;
+
+    let filtered = _.filter(enrolledProgram.states, (patientState: any) => {
+        if (patientState.state.concept && patientState.endDate === null
+          && patientState.state.concept.uuid === refer) {
+          return true;
+        } else {
+          return false;
+        }
+       });
+    return filtered.length > 0 ? true : false;
+  }
+
   public fetchAllProgramVisitConfigs() {
     this.allProgramVisitConfigs = {};
     let sub = this.patientProgramResourceService.
@@ -230,7 +251,16 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
       this.patientService.fetchPatientByUuid(this.patient.uuid);
     }
   }
-
+  public getReferredByLocation(enrollmentUuid): any {
+    let referringLocation = '';
+    this.locationSubscription = this.patientReferralService.getReferralLocationByEnrollmentUuid
+    (enrollmentUuid).subscribe(
+      (referral) => {
+        this.locationReferredFrom = referral.referred_from_location;
+      }
+    );
+    return this.locationReferredFrom;
+  }
   private toOpenmrsDateFormat(dateToConvert: any): string {
     let date = moment(dateToConvert);
     if (date.isValid()) {
@@ -333,7 +363,6 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
       }
     );
   }
-
   private _formFieldsValid(enrolledDate, completedDate, location) {
     if (!this.isEdit && this.program === '') {
       this._showErrorMessage('Program is required.');
@@ -477,5 +506,4 @@ export class GeneralLandingPageComponent implements OnInit, OnDestroy {
       }
 
   }
-
 }

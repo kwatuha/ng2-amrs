@@ -9,6 +9,7 @@ export class DataAnalyticsDashboardService {
   private cached = {};
   private selectedFilters;
   private locations;
+  private urlSource;
   private dataSubject = new ReplaySubject<any>(1);
   private reportFilters = new BehaviorSubject(this.selectedFilters);
   private selectedLocations = new BehaviorSubject(this.locations);
@@ -32,5 +33,12 @@ export class DataAnalyticsDashboardService {
 
   public getSelectedLocations() {
     return this.dataSubject;
+  }
+
+  public setUrlSource(source: any) {
+    this.urlSource = source ;
+  }
+  public getUrlSource() {
+   return this.urlSource;
   }
 }

@@ -24,7 +24,8 @@ import { Location } from '@angular/common';
 
 export class PatientSearchComponent implements OnInit, OnDestroy {
   public patients: Patient[];
-  public referrals: any[] = [];
+  public referred: any[] = [];
+  public referredBack: any[] = [];
   public errors: any[];
   public isResetButton: boolean = true;
   public totalPatients: number;
@@ -41,6 +42,7 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
   public loadingReferralProviders: boolean = false;
   public lastSearchString: string = '';
   public providerUuid: string = '';
+
   /*
    patientSelected emits the patient object
    to other components so they can use
@@ -62,10 +64,13 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
     this._searchString = v;
     this.hasConductedSearch = false;
   }
+
   private endDate: any;
   private startDate: any;
   private locationUuids: any;
   private providerUuids: any;
+  private REFER_CONCEPT_UUID = '98d8131e-973d-4082-9115-2a848daee5a2';
+  private REFERBACK_CONCEPT_UUID = '631ebf7a-e000-4220-9038-e70079ceafca';
   constructor(private patientSearchService: PatientSearchService,
               private route: ActivatedRoute,
               private appFeatureAnalytics: AppFeatureAnalytics,
@@ -76,7 +81,8 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit() {
-    this.getProviderReferrals();
+    this.getPatientReferrals(this.REFER_CONCEPT_UUID);
+    this.getPatientReferrals(this.REFERBACK_CONCEPT_UUID);
     if (window.innerWidth <= 768) {
       this.adjustInputMargin = '0';
     }
@@ -202,17 +208,29 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
     }
   }
 
-  public loadReferralData() {
+  public loadReferredData() {
+    this.router.navigate(['/provider-dashboard'],
+    {queryParams: {
+      'endDate': this.endDate,
+      'startDate': this.startDate,
+      'locationUuids': (this.locationUuids as any),
+      'stateUuids': this.REFER_CONCEPT_UUID,
+      'urlSource': 'REFER'
+    }});
+    // this.referralService.setUrlSource('REFER');
+  }
+  public loadReferredBackData() {
     this.router.navigate(['/provider-dashboard'],
     {queryParams: {
       'endDate': this.endDate,
       'startDate': this.startDate,
       'providerUuids': (this.providerUuids as any),
-      'locationUuids': (this.locationUuids as any)
+      'stateUuids': this.REFERBACK_CONCEPT_UUID,
+      'urlSource': 'REFERBACK'
     }});
   }
 
-  public getProviderReferrals() {
+  private getPatientReferrals( referalType: any) {
     let location = this.defaultPropertiesService.getCurrentUserDefaultLocationObject()
             || {};
     let selectedLocationUuid = location.uuid || 'Default location not set';
@@ -226,7 +244,7 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
         let endDate =  currentDateMoment.format('YYYY-MM-DD');
         let startDate = currentDateMoment.add(-1, 'M').format('YYYY-MM-DD');
 
-        let params = this.getRequestParams(this.providerUuid,
+        let params = this.getRequestParams(referalType, this.providerUuid,
            selectedLocationUuid, startDate, endDate);
         console.log( params);
         this.referralSubscription = this.referralService.getProviderReferralPatientList(params)
@@ -234,8 +252,15 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
             (referralData) => {
               this.loadingReferralProviders = false;
               if (referralData.length >= 1) {
-                this.referrals = referralData;
-                this.dataLoaded = true;
+                 if (referalType === this.REFERBACK_CONCEPT_UUID) {
+                  this.referredBack = referralData;
+                 }
+
+                 if (referalType === this.REFER_CONCEPT_UUID) {
+                  this.referred = referralData;
+                 }
+                 this.dataLoaded = true;
+
               } else {
                 this.dataLoaded = false;
               }
@@ -260,17 +285,28 @@ export class PatientSearchComponent implements OnInit, OnDestroy {
 
   }
 
-  private getRequestParams(provider, location, startDate, endDate) {
+  private getRequestParams(referalType, provider, location, startDate, endDate) {
     let params = {
       endDate: endDate,
       locationUuids: location,
       startDate: startDate,
-      providerUuids: provider
+      providerUuids: provider,
+      stateUuids: referalType
     };
-    this.locationUuids = location;
+
+    if (referalType === this.REFER_CONCEPT_UUID) {
+      // do not filter by provider when getting referred patients
+      delete params['providerUuids'];
+      this.locationUuids = location;
+    }
+
+    if (referalType === this.REFERBACK_CONCEPT_UUID) {
+      // do not filter by location when getting referred back patients
+      delete params['locationUuids'];
+      this.providerUuids = provider;
+    }
     this.startDate = startDate;
     this.endDate = endDate;
-    this.providerUuids = provider;
     return params;
   }
 

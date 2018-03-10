@@ -10,6 +10,12 @@
             {{row.dateEnrolledView}})
           </h2>
           <div class="clear"></div>
+              <div *ngIf="isReferred(row.enrolledProgram)" class="referral-message-container" >
+                <span class="alert refer-status">Patient Refered to this clinic on 
+                  <strong>{{ row.dateEnrolledView }}</strong>
+                  from <strong>{{getReferredByLocation(row.enrolledProgram.uuid)}}</strong>
+                </span>               
+              </div>
         </div>
         <div class="dropdown" [ngClass]="{'open': row.isEdit}">
           <!--<a *ngIf="!row.isEdit" class="edit-toggle pull-right" type="button"
