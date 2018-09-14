@@ -73,8 +73,11 @@ export class HivSummaryLatestComponent implements OnInit {
   }
 
   public endDateIsBeforeStartDate(startDate: any, endDate: any) {
-    return Moment(endDate, 'DD-MM-YYYY')
+    if (startDate && endDate) {
+     return Moment(endDate, 'DD-MM-YYYY')
     .isBefore(Moment(startDate, 'YYYY-MM-DD'));
+    }
+    return false;
   }
 
   public isEmptyDate(date: any) {
